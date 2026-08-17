@@ -5,6 +5,6 @@
 // Access control is enforced by the Row Level Security policies in
 // schema.sql, not by keeping this key secret.
 window.SUPABASE_CONFIG = {
-  url: "YOUR_SUPABASE_URL",
-  anonKey: "YOUR_SUPABASE_ANON_KEY",
+  url: "https://icvlummzaukqvrczslki.supabase.co",
+  anonKey: "sb_publishable_xVyfnkQ501IvQF6PWXSHQQ_dVlK3bOS",
 };
