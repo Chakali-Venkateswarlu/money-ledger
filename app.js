@@ -3,7 +3,6 @@
 
   // Change this to your local currency symbol.
   const CURRENCY_SYMBOL = "₹";
-  const STORAGE_KEY = "money-ledger-transactions";
 
   // Fixed order — do not reorder (keeps chart colors stable & CVD-safe adjacency).
   const CATEGORIES = [
@@ -18,34 +17,15 @@
   const CATEGORY_BY_ID = Object.fromEntries(CATEGORIES.map(c => [c.id, c]));
 
   // ---------- state ----------
-  let transactions = loadTransactions();
+  let transactions = [];
   let viewMonth = todayDate().slice(0, 7); // "YYYY-MM"
   let categoryFilter = "";
-
-  // ---------- storage ----------
-  function loadTransactions() {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      const parsed = raw ? JSON.parse(raw) : [];
-      return Array.isArray(parsed) ? parsed : [];
-    } catch (e) {
-      console.error("Failed to load transactions", e);
-      return [];
-    }
-  }
-
-  function saveTransactions() {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(transactions));
-  }
+  let authMode = "signin"; // "signin" | "signup"
 
   function todayDate() {
     const d = new Date();
     const tz = d.getTimezoneOffset() * 60000;
     return new Date(d - tz).toISOString().slice(0, 10);
-  }
-
-  function uid() {
-    return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
   }
 
   // ---------- formatting ----------
@@ -78,8 +58,27 @@
     return d.toISOString().slice(0, 10);
   }
 
+  function escapeHtml(s) {
+    const div = document.createElement("div");
+    div.textContent = s;
+    return div.innerHTML;
+  }
+
   // ---------- DOM refs ----------
   const el = {
+    authView: document.getElementById("authView"),
+    appView: document.getElementById("appView"),
+    authForm: document.getElementById("authForm"),
+    authEmail: document.getElementById("authEmail"),
+    authPassword: document.getElementById("authPassword"),
+    authError: document.getElementById("authError"),
+    authNotice: document.getElementById("authNotice"),
+    authSubmit: document.getElementById("authSubmit"),
+    authToggleText: document.getElementById("authToggleText"),
+    authToggleBtn: document.getElementById("authToggleBtn"),
+    accountEmail: document.getElementById("accountEmail"),
+    signOutBtn: document.getElementById("signOutBtn"),
+
     monthLabel: document.getElementById("monthLabel"),
     prevMonth: document.getElementById("prevMonth"),
     nextMonth: document.getElementById("nextMonth"),
@@ -104,11 +103,36 @@
     note: document.getElementById("note"),
     deleteBtn: document.getElementById("deleteBtn"),
     cancelBtn: document.getElementById("cancelBtn"),
+    saveBtn: document.getElementById("saveBtn"),
     exportJson: document.getElementById("exportJson"),
     exportCsv: document.getElementById("exportCsv"),
     importFile: document.getElementById("importFile"),
     clearAll: document.getElementById("clearAll"),
   };
+
+  // ---------- Supabase setup ----------
+  const config = window.SUPABASE_CONFIG || {};
+  const isConfigured = config.url && config.anonKey && !config.url.includes("YOUR_SUPABASE_URL");
+
+  if (!isConfigured) {
+    el.authView.hidden = false;
+    el.authView.innerHTML = `
+      <div class="auth-card">
+        <div class="brand auth-brand">
+          <span class="brand-mark">💰</span>
+          <span class="brand-name">Money Ledger</span>
+        </div>
+        <p class="auth-sub">Not configured yet.</p>
+        <p class="auth-error" style="display:block">
+          Edit <code>config.js</code> and set your Supabase project URL and anon key
+          (Project Settings → API in your Supabase dashboard), then reload this page.
+          Run <code>schema.sql</code> in the Supabase SQL editor first if you haven't.
+        </p>
+      </div>`;
+    return;
+  }
+
+  const sb = window.supabase.createClient(config.url, config.anonKey);
 
   // ---------- init selects ----------
   function populateCategorySelects() {
@@ -134,7 +158,6 @@
   // ---------- rendering ----------
   function renderMonthLabel() {
     el.monthLabel.textContent = monthLabel(viewMonth);
-    const now = new Date();
     const isCurrent = viewMonth === todayDate().slice(0, 7);
     el.statMonthLabel.textContent = isCurrent ? "This month" : monthLabel(viewMonth);
   }
@@ -217,7 +240,7 @@
     const dates = Object.keys(byDate).sort((a, b) => (a < b ? 1 : -1));
 
     el.txList.innerHTML = dates.map(date => {
-      const items = byDate[date].sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
+      const items = byDate[date].sort((a, b) => (a.created_at < b.created_at ? 1 : -1));
       const dayTotal = items.reduce((s, t) => s + Number(t.amount), 0);
       const rows = items.map(t => {
         const cat = CATEGORY_BY_ID[t.category] || CATEGORIES[CATEGORIES.length - 1];
@@ -240,17 +263,62 @@
     }).join("");
   }
 
-  function escapeHtml(s) {
-    const div = document.createElement("div");
-    div.textContent = s;
-    return div.innerHTML;
-  }
-
   function renderAll() {
     renderMonthLabel();
     renderStats();
     renderCategoryChart();
     renderTxList();
+  }
+
+  // ---------- data (Supabase) ----------
+  async function fetchTransactions() {
+    const { data, error } = await sb
+      .from("transactions")
+      .select("*")
+      .order("date", { ascending: false });
+    if (error) {
+      alert("Could not load your transactions: " + error.message);
+      return;
+    }
+    transactions = data;
+    renderAll();
+  }
+
+  async function createTransaction({ amount, category, date, note }) {
+    const { data, error } = await sb
+      .from("transactions")
+      .insert({ amount, category, date, note: note || null })
+      .select()
+      .single();
+    if (error) {
+      alert("Could not save this expense: " + error.message);
+      return;
+    }
+    transactions.push(data);
+  }
+
+  async function updateTransaction(id, { amount, category, date, note }) {
+    const { data, error } = await sb
+      .from("transactions")
+      .update({ amount, category, date, note: note || null })
+      .eq("id", id)
+      .select()
+      .single();
+    if (error) {
+      alert("Could not update this expense: " + error.message);
+      return;
+    }
+    const idx = transactions.findIndex(t => t.id === id);
+    if (idx !== -1) transactions[idx] = data;
+  }
+
+  async function deleteTransaction(id) {
+    const { error } = await sb.from("transactions").delete().eq("id", id);
+    if (error) {
+      alert("Could not delete this expense: " + error.message);
+      return;
+    }
+    transactions = transactions.filter(t => t.id !== id);
   }
 
   // ---------- dialog ----------
@@ -281,7 +349,7 @@
     el.addDialog.close();
   }
 
-  function handleFormSubmit(e) {
+  async function handleFormSubmit(e) {
     e.preventDefault();
     const id = el.editId.value;
     const amount = parseFloat(el.amount.value);
@@ -291,29 +359,24 @@
 
     if (!amount || amount <= 0 || !date) return;
 
+    el.saveBtn.disabled = true;
     if (id) {
-      const tx = transactions.find(t => t.id === id);
-      if (tx) {
-        tx.amount = amount;
-        tx.category = category;
-        tx.date = date;
-        tx.note = note;
-      }
+      await updateTransaction(id, { amount, category, date, note });
     } else {
-      transactions.push({ id: uid(), amount, category, date, note, createdAt: new Date().toISOString() });
+      await createTransaction({ amount, category, date, note });
     }
-    saveTransactions();
+    el.saveBtn.disabled = false;
+
     viewMonth = date.slice(0, 7);
     closeDialog();
     renderAll();
   }
 
-  function handleDelete() {
+  async function handleDelete() {
     const id = el.editId.value;
     if (!id) return;
     if (!confirm("Delete this transaction?")) return;
-    transactions = transactions.filter(t => t.id !== id);
-    saveTransactions();
+    await deleteTransaction(id);
     closeDialog();
     renderAll();
   }
@@ -344,41 +407,118 @@
     downloadBlob("money-ledger.csv", [header, ...rows].join("\n"), "text/csv");
   }
 
-  function importJson(file) {
-    const reader = new FileReader();
-    reader.onload = () => {
-      try {
-        const data = JSON.parse(reader.result);
-        if (!Array.isArray(data)) throw new Error("Invalid file format");
-        const valid = data.filter(t => t && t.amount && t.date && t.category);
-        if (!confirm(`Import ${valid.length} transaction(s)? This will be merged with existing data.`)) return;
-        const existingIds = new Set(transactions.map(t => t.id));
-        for (const t of valid) {
-          transactions.push({
-            id: existingIds.has(t.id) ? uid() : (t.id || uid()),
-            amount: Number(t.amount),
-            category: CATEGORY_BY_ID[t.category] ? t.category : "others",
-            date: t.date,
-            note: t.note || "",
-            createdAt: t.createdAt || new Date().toISOString(),
-          });
-        }
-        saveTransactions();
-        renderAll();
-      } catch (err) {
-        alert("Could not import this file: " + err.message);
-      }
-    };
-    reader.readAsText(file);
+  async function importJson(file) {
+    const text = await file.text();
+    let data;
+    try {
+      data = JSON.parse(text);
+      if (!Array.isArray(data)) throw new Error("Invalid file format");
+    } catch (err) {
+      alert("Could not import this file: " + err.message);
+      return;
+    }
+
+    const valid = data.filter(t => t && t.amount && t.date && t.category);
+    if (!confirm(`Import ${valid.length} transaction(s)? They'll be added to your account.`)) return;
+
+    const rows = valid.map(t => ({
+      amount: Number(t.amount),
+      category: CATEGORY_BY_ID[t.category] ? t.category : "others",
+      date: t.date,
+      note: t.note || null,
+    }));
+
+    const { error } = await sb.from("transactions").insert(rows);
+    if (error) {
+      alert("Import failed: " + error.message);
+      return;
+    }
+    await fetchTransactions();
   }
 
-  function clearAll() {
+  async function clearAll() {
     if (!confirm("Delete ALL transactions? This cannot be undone.")) return;
     if (!confirm("Are you absolutely sure? Consider exporting a backup first.")) return;
+    const { error } = await sb.from("transactions").delete().gte("created_at", "1900-01-01");
+    if (error) {
+      alert("Could not clear data: " + error.message);
+      return;
+    }
     transactions = [];
-    saveTransactions();
     renderAll();
   }
+
+  // ---------- auth ----------
+  function setAuthMode(mode) {
+    authMode = mode;
+    el.authError.hidden = true;
+    el.authNotice.hidden = true;
+    if (mode === "signin") {
+      el.authSubmit.textContent = "Sign in";
+      el.authToggleText.textContent = "Don't have an account?";
+      el.authToggleBtn.textContent = "Create one";
+      el.authPassword.autocomplete = "current-password";
+    } else {
+      el.authSubmit.textContent = "Create account";
+      el.authToggleText.textContent = "Already have an account?";
+      el.authToggleBtn.textContent = "Sign in";
+      el.authPassword.autocomplete = "new-password";
+    }
+  }
+
+  async function handleAuthSubmit(e) {
+    e.preventDefault();
+    el.authError.hidden = true;
+    el.authNotice.hidden = true;
+    el.authSubmit.disabled = true;
+
+    const email = el.authEmail.value.trim();
+    const password = el.authPassword.value;
+
+    try {
+      if (authMode === "signin") {
+        const { error } = await sb.auth.signInWithPassword({ email, password });
+        if (error) throw error;
+      } else {
+        const { data, error } = await sb.auth.signUp({ email, password });
+        if (error) throw error;
+        if (!data.session) {
+          el.authNotice.hidden = false;
+          el.authNotice.textContent = "Account created. Check your email to confirm it, then sign in.";
+          setAuthMode("signin");
+        }
+      }
+    } catch (err) {
+      el.authError.hidden = false;
+      el.authError.textContent = err.message || "Something went wrong.";
+    }
+    el.authSubmit.disabled = false;
+  }
+
+  async function handleSignOut() {
+    await sb.auth.signOut();
+  }
+
+  function showAuthView() {
+    el.appView.hidden = true;
+    el.authView.hidden = false;
+    transactions = [];
+  }
+
+  async function showAppView(session) {
+    el.authView.hidden = true;
+    el.appView.hidden = false;
+    el.accountEmail.textContent = session.user.email;
+    await fetchTransactions();
+  }
+
+  sb.auth.onAuthStateChange((_event, session) => {
+    if (session) {
+      showAppView(session);
+    } else {
+      showAuthView();
+    }
+  });
 
   // ---------- events ----------
   el.prevMonth.addEventListener("click", () => {
@@ -429,7 +569,11 @@
   });
   el.clearAll.addEventListener("click", clearAll);
 
+  el.authForm.addEventListener("submit", handleAuthSubmit);
+  el.authToggleBtn.addEventListener("click", () => setAuthMode(authMode === "signin" ? "signup" : "signin"));
+  el.signOutBtn.addEventListener("click", handleSignOut);
+
   // ---------- boot ----------
   populateCategorySelects();
-  renderAll();
+  setAuthMode("signin");
 })();

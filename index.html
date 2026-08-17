@@ -11,6 +11,37 @@
 <body>
 <div class="app">
 
+  <section id="authView" class="auth-view" hidden>
+    <div class="auth-card">
+      <div class="brand auth-brand">
+        <span class="brand-mark">💰</span>
+        <span class="brand-name">Money Ledger</span>
+      </div>
+      <p class="auth-sub">Sign in to sync your ledger across devices.</p>
+
+      <form id="authForm" class="auth-form">
+        <label class="field">
+          <span>Email</span>
+          <input type="email" id="authEmail" required autocomplete="email" placeholder="you@example.com" />
+        </label>
+        <label class="field">
+          <span>Password</span>
+          <input type="password" id="authPassword" required autocomplete="current-password" minlength="6" placeholder="At least 6 characters" />
+        </label>
+        <p id="authError" class="auth-error" hidden></p>
+        <p id="authNotice" class="auth-notice" hidden></p>
+        <button type="submit" id="authSubmit" class="btn-primary auth-submit">Sign in</button>
+      </form>
+
+      <p class="auth-toggle">
+        <span id="authToggleText">Don't have an account?</span>
+        <button type="button" id="authToggleBtn" class="link-btn">Create one</button>
+      </p>
+    </div>
+  </section>
+
+  <div id="appView" hidden>
+
   <header class="topbar">
     <div class="brand">
       <span class="brand-mark">💰</span>
@@ -78,7 +109,7 @@
         </label>
         <button id="clearAll" class="btn-danger">Clear all data</button>
       </div>
-      <p class="data-note">Everything is stored only in this browser (localStorage). Export regularly to back up.</p>
+      <p class="data-note">Synced to your account (<span id="accountEmail"></span>) — available on any device you sign into. <button type="button" id="signOutBtn" class="link-btn">Sign out</button></p>
     </section>
 
   </main>
@@ -120,7 +151,11 @@
     </form>
   </dialog>
 
+  </div>
+
 </div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="config.js"></script>
 <script src="app.js"></script>
 </body>
 </html>
