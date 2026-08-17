@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="theme-color" content="#fcfcfb" />
+<title>Money Ledger</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>💰</text></svg>" />
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+<div class="app">
+
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-mark">💰</span>
+      <span class="brand-name">Money Ledger</span>
+    </div>
+    <div class="month-nav">
+      <button id="prevMonth" class="icon-btn" aria-label="Previous month">‹</button>
+      <span id="monthLabel" class="month-label"></span>
+      <button id="nextMonth" class="icon-btn" aria-label="Next month">›</button>
+    </div>
+  </header>
+
+  <main class="content">
+
+    <section class="stat-row" aria-label="Summary">
+      <div class="stat-tile">
+        <div class="stat-label">Today</div>
+        <div class="stat-value" id="statToday">₹0</div>
+      </div>
+      <div class="stat-tile">
+        <div class="stat-label">This week</div>
+        <div class="stat-value" id="statWeek">₹0</div>
+      </div>
+      <div class="stat-tile">
+        <div class="stat-label" id="statMonthLabel">This month</div>
+        <div class="stat-value" id="statMonth">₹0</div>
+      </div>
+      <div class="stat-tile">
+        <div class="stat-label">Daily average</div>
+        <div class="stat-value" id="statAvg">₹0</div>
+      </div>
+    </section>
+
+    <section class="card" id="chartCard">
+      <div class="card-header">
+        <h2>By category</h2>
+      </div>
+      <div id="categoryChart" class="category-chart"></div>
+      <p id="chartEmpty" class="empty-hint" hidden>No spending recorded for this month yet.</p>
+    </section>
+
+    <section class="card">
+      <div class="card-header">
+        <h2>Transactions</h2>
+        <div class="filter-row">
+          <select id="categoryFilter" aria-label="Filter by category">
+            <option value="">All categories</option>
+          </select>
+        </div>
+      </div>
+      <div id="txList" class="tx-list"></div>
+      <p id="txEmpty" class="empty-hint" hidden>No transactions match this filter.</p>
+    </section>
+
+    <section class="card data-card">
+      <div class="card-header">
+        <h2>Your data</h2>
+      </div>
+      <div class="data-actions">
+        <button id="exportJson" class="btn-secondary">Export JSON</button>
+        <button id="exportCsv" class="btn-secondary">Export CSV</button>
+        <label class="btn-secondary file-label">
+          Import JSON
+          <input type="file" id="importFile" accept="application/json" hidden />
+        </label>
+        <button id="clearAll" class="btn-danger">Clear all data</button>
+      </div>
+      <p class="data-note">Everything is stored only in this browser (localStorage). Export regularly to back up.</p>
+    </section>
+
+  </main>
+
+  <button id="addFab" class="fab" aria-haspopup="dialog" aria-controls="addDialog" aria-label="Add expense">+</button>
+
+  <dialog id="addDialog">
+    <form id="addForm" method="dialog">
+      <h2 id="dialogTitle">Add expense</h2>
+      <input type="hidden" id="editId" value="" />
+
+      <label class="field">
+        <span>Amount</span>
+        <input type="number" id="amount" inputmode="decimal" step="0.01" min="0.01" required placeholder="0.00" />
+      </label>
+
+      <label class="field">
+        <span>Category</span>
+        <select id="category" required></select>
+      </label>
+
+      <label class="field">
+        <span>Date</span>
+        <input type="date" id="date" required />
+      </label>
+
+      <label class="field">
+        <span>Note (optional)</span>
+        <input type="text" id="note" maxlength="120" placeholder="e.g. groceries at market" />
+      </label>
+
+      <div class="dialog-actions">
+        <button type="button" id="deleteBtn" class="btn-danger" hidden>Delete</button>
+        <div class="dialog-actions-right">
+          <button type="button" id="cancelBtn" class="btn-secondary">Cancel</button>
+          <button type="submit" id="saveBtn" class="btn-primary">Save</button>
+        </div>
+      </div>
+    </form>
+  </dialog>
+
+</div>
+<script src="app.js"></script>
+</body>
+</html>
