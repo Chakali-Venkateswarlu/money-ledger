@@ -404,7 +404,7 @@ dialog::backdrop {
 }
 
 /* Auth */
-.auth-view {
+.auth-view:not([hidden]) {
   min-height: 100vh;
   display: flex;
   align-items: center;
