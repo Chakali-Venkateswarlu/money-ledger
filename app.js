@@ -483,9 +483,9 @@
         const { data, error } = await sb.auth.signUp({ email, password });
         if (error) throw error;
         if (!data.session) {
+          setAuthMode("signin");
           el.authNotice.hidden = false;
           el.authNotice.textContent = "Account created. Check your email to confirm it, then sign in.";
-          setAuthMode("signin");
         }
       }
     } catch (err) {
