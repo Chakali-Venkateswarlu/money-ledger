@@ -4,12 +4,14 @@
   // Change this to your local currency symbol.
   const CURRENCY_SYMBOL = "₹";
 
-  // Fixed order — do not reorder (keeps chart colors stable & CVD-safe adjacency).
-  // ids "food", "shopping", "travel", "bills", "others" are reused from the original
-  // category set so existing transactions keep their meaning after the rename.
+  // This order is just the dropdown/list display order — each category's color
+  // comes from its own colorVar, not its position, so reordering here never
+  // changes anyone's color. ids "food", "shopping", "travel", "bills", "others"
+  // are reused from the original category set so existing transactions keep
+  // their meaning after the rename.
   const CATEGORIES = [
-    { id: "rent", name: "🏠 Rent", colorVar: "--cat-9" },
     { id: "food", name: "🍱 Food", colorVar: "--cat-1" },
+    { id: "rent", name: "🏠 Rent", colorVar: "--cat-9" },
     { id: "to_house", name: "🛒 To House", colorVar: "--cat-10" },
     { id: "travel", name: "🚌 Transport", colorVar: "--cat-3" },
     { id: "bills", name: "📱 Bills/Recharge", colorVar: "--cat-4" },
@@ -24,8 +26,8 @@
   // still count in the stats and chart, and don't get silently reassigned if
   // you open one of them to edit just the amount or note.
   const LEGACY_CATEGORIES = [
-    { id: "entertainment", name: "Entertainment", colorVar: "--cat-5" },
-    { id: "health", name: "Health", colorVar: "--cat-6" },
+    { id: "entertainment", name: "🎬 Entertainment", colorVar: "--cat-5" },
+    { id: "health", name: "🏥 Health", colorVar: "--cat-6" },
   ];
 
   const ALL_CATEGORIES = [...CATEGORIES, ...LEGACY_CATEGORIES];
