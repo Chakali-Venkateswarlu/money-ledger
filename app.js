@@ -5,16 +5,31 @@
   const CURRENCY_SYMBOL = "₹";
 
   // Fixed order — do not reorder (keeps chart colors stable & CVD-safe adjacency).
+  // ids "food", "shopping", "travel", "bills", "others" are reused from the original
+  // category set so existing transactions keep their meaning after the rename.
   const CATEGORIES = [
-    { id: "food", name: "Food", colorVar: "--cat-1" },
-    { id: "shopping", name: "Shopping", colorVar: "--cat-2" },
-    { id: "travel", name: "Travel", colorVar: "--cat-3" },
-    { id: "bills", name: "Bills", colorVar: "--cat-4" },
+    { id: "rent", name: "🏠 Rent", colorVar: "--cat-9" },
+    { id: "food", name: "🍱 Food", colorVar: "--cat-1" },
+    { id: "to_house", name: "🛒 To House", colorVar: "--cat-10" },
+    { id: "travel", name: "🚌 Transport", colorVar: "--cat-3" },
+    { id: "bills", name: "📱 Bills/Recharge", colorVar: "--cat-4" },
+    { id: "clothing", name: "👕 Clothing", colorVar: "--cat-11" },
+    { id: "shopping", name: "🛍️ Personal Shopping", colorVar: "--cat-2" },
+    { id: "others", name: "📦 Others", colorVar: "--cat-7" },
+    { id: "scheme", name: "🚨 Scheme", colorVar: "--cat-8" },
+  ];
+
+  // Retired categories — no longer offered for new expenses, but kept here so
+  // old transactions still show their real name/color instead of "Others",
+  // still count in the stats and chart, and don't get silently reassigned if
+  // you open one of them to edit just the amount or note.
+  const LEGACY_CATEGORIES = [
     { id: "entertainment", name: "Entertainment", colorVar: "--cat-5" },
     { id: "health", name: "Health", colorVar: "--cat-6" },
-    { id: "others", name: "Others", colorVar: "--cat-7" },
   ];
-  const CATEGORY_BY_ID = Object.fromEntries(CATEGORIES.map(c => [c.id, c]));
+
+  const ALL_CATEGORIES = [...CATEGORIES, ...LEGACY_CATEGORIES];
+  const CATEGORY_BY_ID = Object.fromEntries(ALL_CATEGORIES.map(c => [c.id, c]));
 
   // ---------- state ----------
   let transactions = [];
@@ -135,11 +150,29 @@
   const sb = window.supabase.createClient(config.url, config.anonKey);
 
   // ---------- init selects ----------
-  function populateCategorySelects() {
+  function populateCategoryOptions() {
+    // Add/edit dropdown only offers the current 9 categories.
     el.category.innerHTML = CATEGORIES.map(c => `<option value="${c.id}">${c.name}</option>`).join("");
+  }
+
+  function populateCategorySelects() {
+    populateCategoryOptions();
+    // The filter can still find old transactions filed under a retired category.
     el.categoryFilter.innerHTML =
       `<option value="">All categories</option>` +
-      CATEGORIES.map(c => `<option value="${c.id}">${c.name}</option>`).join("");
+      ALL_CATEGORIES.map(c => `<option value="${c.id}">${c.name}</option>`).join("");
+  }
+
+  // If a transaction's category isn't in the current dropdown (a retired
+  // category), add it as a one-off option so editing the transaction doesn't
+  // silently reassign it to whatever option happens to be first.
+  function ensureCategoryOption(id) {
+    if (el.category.querySelector(`option[value="${CSS.escape(id)}"]`)) return;
+    const cat = CATEGORY_BY_ID[id];
+    const option = document.createElement("option");
+    option.value = id;
+    option.textContent = cat ? cat.name : id;
+    el.category.prepend(option);
   }
 
   // ---------- derived data ----------
@@ -148,7 +181,7 @@
   }
 
   function categoryTotals(list) {
-    const totals = Object.fromEntries(CATEGORIES.map(c => [c.id, 0]));
+    const totals = Object.fromEntries(ALL_CATEGORIES.map(c => [c.id, 0]));
     for (const t of list) {
       totals[t.category] = (totals[t.category] || 0) + Number(t.amount);
     }
@@ -201,7 +234,7 @@
     }
     el.chartEmpty.hidden = true;
 
-    const rows = CATEGORIES
+    const rows = ALL_CATEGORIES
       .map(c => ({ ...c, amount: totals[c.id] }))
       .filter(c => c.amount > 0)
       .sort((a, b) => b.amount - a.amount);
@@ -243,7 +276,7 @@
       const items = byDate[date].sort((a, b) => (a.created_at < b.created_at ? 1 : -1));
       const dayTotal = items.reduce((s, t) => s + Number(t.amount), 0);
       const rows = items.map(t => {
-        const cat = CATEGORY_BY_ID[t.category] || CATEGORIES[CATEGORIES.length - 1];
+        const cat = CATEGORY_BY_ID[t.category] || ALL_CATEGORIES[ALL_CATEGORIES.length - 1];
         return `
           <div class="tx-item" data-id="${t.id}" role="button" tabindex="0">
             <span class="tx-dot" style="background: var(${cat.colorVar})"></span>
@@ -323,6 +356,7 @@
 
   // ---------- dialog ----------
   function openAddDialog() {
+    populateCategoryOptions();
     el.dialogTitle.textContent = "Add expense";
     el.editId.value = "";
     el.amount.value = "";
@@ -335,6 +369,8 @@
   }
 
   function openEditDialog(tx) {
+    populateCategoryOptions();
+    ensureCategoryOption(tx.category);
     el.dialogTitle.textContent = "Edit expense";
     el.editId.value = tx.id;
     el.amount.value = tx.amount;

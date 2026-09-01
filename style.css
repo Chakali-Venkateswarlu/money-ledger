@@ -10,13 +10,17 @@
   --success:        #006300;
   --danger:         #d03b3b;
 
-  --cat-1: #2a78d6; /* Food */
-  --cat-2: #eb6834; /* Shopping */
-  --cat-3: #1baf7a; /* Travel */
-  --cat-4: #eda100; /* Bills */
-  --cat-5: #e87ba4; /* Entertainment */
-  --cat-6: #008300; /* Health */
-  --cat-7: #4a3aa7; /* Others */
+  --cat-1: #2a78d6;  /* Food */
+  --cat-2: #eb6834;  /* Personal Shopping */
+  --cat-3: #1baf7a;  /* Transport */
+  --cat-4: #eda100;  /* Bills/Recharge */
+  --cat-5: #e87ba4;  /* Entertainment (legacy) */
+  --cat-6: #008300;  /* Health (legacy) */
+  --cat-7: #4a3aa7;  /* Others */
+  --cat-8: #e34948;  /* Scheme */
+  --cat-9: #9a5b2e;  /* Rent */
+  --cat-10: #c2185b; /* To House */
+  --cat-11: #8a3a7a; /* Clothing */
 }
 
 @media (prefers-color-scheme: dark) {
@@ -39,6 +43,10 @@
     --cat-5: #d55181;
     --cat-6: #008300;
     --cat-7: #9085e9;
+    --cat-8: #e66767;
+    --cat-9: #c17a42;
+    --cat-10: #c2185b;
+    --cat-11: #a855a0;
   }
 }
 
@@ -61,6 +69,10 @@
   --cat-5: #d55181;
   --cat-6: #008300;
   --cat-7: #9085e9;
+  --cat-8: #e66767;
+  --cat-9: #c17a42;
+  --cat-10: #c2185b;
+  --cat-11: #a855a0;
 }
 
 * { box-sizing: border-box; }
@@ -191,16 +203,18 @@ html, body {
 }
 
 /* Category bar chart */
+/* A shared grid (not one grid per row) so the name/track/amount columns line
+   up across rows even though label lengths vary a lot ("Rent" vs "Personal
+   Shopping"). Each .cat-row uses display:contents so its children become
+   items of this outer grid instead of a nested grid of their own. */
 .category-chart {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-.cat-row {
   display: grid;
   grid-template-columns: minmax(88px, max-content) 1fr 76px;
   align-items: center;
-  gap: 10px;
+  gap: 12px 10px;
+}
+.cat-row {
+  display: contents;
 }
 .cat-name {
   display: flex;
